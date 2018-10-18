@@ -16,10 +16,12 @@ https://stackoverflow.com/questions/29115493/how-to-use-regcreatekeyex
 */
 
 #include <tchar.h>
-#include <Windows.h>
+#include <windows.h>
+#include <wincred.h>
 #include <string>
 #include <lmcons.h>
 #include "Deploy.h"
+#include "ErrorUtils.h"
 
 static std::wstring GetUserNameString()
 {
@@ -30,48 +32,149 @@ static std::wstring GetUserNameString()
 
     return username;
 }
+/*
+static BOOL IsElevated()
+{
+    BOOL fRet = FALSE;
+    HANDLE hToken = NULL;
+
+    if( OpenProcessToken( GetCurrentProcess( ),TOKEN_QUERY,&hToken ) ) {
+        TOKEN_ELEVATION Elevation;
+        DWORD cbSize = sizeof( TOKEN_ELEVATION );
+        if( GetTokenInformation( hToken, TokenElevation, &Elevation, sizeof( Elevation ), &cbSize ) ) {
+            fRet = Elevation.TokenIsElevated;
+        }
+    }
+    if( hToken ) {
+        CloseHandle( hToken );
+    }
+    return fRet;
+}
+
+BOOL IsRunAsAdmin()
+{
+    BOOL fIsRunAsAdmin = FALSE;
+    DWORD dwError = ERROR_SUCCESS;
+    PSID pAdministratorsGroup = NULL;
+
+    // Allocate and initialize a SID of the administrators group.
+    SID_IDENTIFIER_AUTHORITY NtAuthority = SECURITY_NT_AUTHORITY;
+    if (!AllocateAndInitializeSid(
+        &NtAuthority,
+        2,
+        SECURITY_BUILTIN_DOMAIN_RID,
+        DOMAIN_ALIAS_RID_ADMINS,
+        0, 0, 0, 0, 0, 0,
+        &pAdministratorsGroup))
+    {
+        dwError = GetLastError();
+        goto Cleanup;
+    }
+
+    // Determine whether the SID of administrators group is enabled in
+    // the primary access token of the process.
+    if (!CheckTokenMembership(NULL, pAdministratorsGroup, &fIsRunAsAdmin))
+    {
+        dwError = GetLastError();
+        goto Cleanup;
+    }
+
+Cleanup:
+    // Centralized cleanup for all allocated resources.
+    if (pAdministratorsGroup)
+    {
+        FreeSid(pAdministratorsGroup);
+        pAdministratorsGroup = NULL;
+    }
+
+    // Throw the error if something failed in the function.
+    if (ERROR_SUCCESS != dwError)
+    {
+        throw dwError;
+    }
+
+    return fIsRunAsAdmin;
+}
+*/
 
 int _tmain(int argc, _TCHAR* argv[])
 {
     std::wstring installPath = L"C:\\Users\\" + GetUserNameString() + L"\\AppData\\Local\\TestFolder";
 
-    Deploy::Install(installPath);
     /*
-    HKEY hKey;
-
-    LSTATUS res = RegCreateKeyEx(HKEY_LOCAL_MACHINE,
-                                 L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\NetboxTask",
-                                 0,
-                                 nullptr,
-                                 REG_OPTION_NON_VOLATILE,
-                                 KEY_WRITE | KEY_WOW64_32KEY,
-                                 nullptr,
-                                 &hKey,
-                                 nullptr);
-
-
-    if (res != ERROR_SUCCESS)
+    if(!IsRunAsAdmin())
     {
-        LPTSTR errorText = NULL;
-
-        FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_IGNORE_INSERTS,
-                    NULL,
-                   res,
-                   MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-                   (LPTSTR)&errorText,
-                   0,
-                   NULL);
-
-        if ( NULL != errorText )
+        wchar_t szPath[MAX_PATH];
+        if (GetModuleFileName(NULL, szPath, ARRAYSIZE(szPath)))
         {
-           // ... do something with the string `errorText` - log it, display it to the user, etc.
+            // Launch itself as administrator.
+            SHELLEXECUTEINFO sei = { sizeof(sei) };
+            sei.lpVerb = L"runas";
+            sei.lpFile = szPath;
+            sei.nShow = SW_SHOW;
+            sei.fMask = SEE_MASK_NOCLOSEPROCESS;
+            sei.hInstApp = NULL;
 
-           // release memory allocated by FormatMessage()
-           LocalFree(errorText);
-           errorText = NULL;
+            bool ret = ShellExecuteExW(&sei);
+            if (!ret)
+            {
+                DWORD dwError = GetLastError();
+                if (dwError == ERROR_CANCELLED)
+                {
+                    // The user refused the elevation.
+                    // Do nothing ...
+                }
+            }
+            else
+                WaitForSingleObject(sei.hProcess,INFINITE);
+        }
+    }
+
+    if(!IsElevated())
+    {
+        CREDUI_INFO cui;
+        TCHAR pszName[CREDUI_MAX_USERNAME_LENGTH+1];
+        TCHAR pszPwd[CREDUI_MAX_PASSWORD_LENGTH+1];
+        BOOL fSave;
+        DWORD dwErr;
+
+        cui.cbSize = sizeof(CREDUI_INFO);
+        cui.hwndParent = NULL;
+        cui.pszMessageText = TEXT("Enter administrator account information");
+        cui.pszCaptionText = TEXT("CredUITest");
+        cui.hbmBanner = NULL;
+        fSave = FALSE;
+        SecureZeroMemory(pszName, sizeof(pszName));
+        SecureZeroMemory(pszPwd, sizeof(pszPwd));
+        dwErr = CredUIPromptForCredentialsW(
+            &cui,                         // CREDUI_INFO structure
+            TEXT("TheServer"),            // Target for credentials
+                                          //   (usually a server)
+            NULL,                         // Reserved
+            0,                            // Reason
+            pszName,                      // User name
+            CREDUI_MAX_USERNAME_LENGTH+1, // Max number of char for user name
+            pszPwd,                       // Password
+            CREDUI_MAX_PASSWORD_LENGTH+1, // Max number of char for password
+            &fSave,                       // State of save check box
+            CREDUI_FLAGS_GENERIC_CREDENTIALS | CREDUI_FLAGS_ALWAYS_SHOW_UI | CREDUI_FLAGS_DO_NOT_PERSIST | CREDUI_FLAGS_EXPECT_CONFIRMATION );
+
+        if(!dwErr)
+        {
+
+            DWORD ret = CredUIConfirmCredentialsW(TEXT("TheServer"), true);
+            if(ret != NO_ERROR)
+            {
+                std::wstring errStr = Utils::GetErrorMessageString(ret);
+                int asd = 0;
+            }
+
+            SecureZeroMemory(pszName, sizeof(pszName));
+            SecureZeroMemory(pszPwd, sizeof(pszPwd));
         }
     }
     */
+    Deploy::Install(installPath);
 
     return 0;
 }

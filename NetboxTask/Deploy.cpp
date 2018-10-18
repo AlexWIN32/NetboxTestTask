@@ -76,23 +76,28 @@ void Install(const std::wstring &InstallPath)
     }
 
     //make registry entries
-    res = RegCreateKeyEx(HKEY_LOCAL_MACHINE,
-                         L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\NetboxTask",
-                         0,
-                         nullptr,
-                         REG_OPTION_NON_VOLATILE,
-                         KEY_WRITE | KEY_WOW64_32KEY,
-                         nullptr,
-                         &hk,
-                         nullptr);
+    res = RegCreateKeyExW(HKEY_LOCAL_MACHINE,
+                          L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\NetboxTask",
+                          0,
+                          nullptr,
+                          REG_OPTION_NON_VOLATILE,
+                          KEY_WRITE | KEY_WOW64_32KEY,
+                          nullptr,
+                          &hk,
+                          nullptr);
     if(res != ERROR_SUCCESS)
-        throw RegistryOperationException(L"cant create NetboxTask registry entry:" + Utils::GetErrorMessageString());
+    {
+        std::wstring msg = Utils::GetErrorMessageString(res);
+        throw RegistryOperationException(L"cant create NetboxTask registry entry:" + Utils::GetErrorMessageString(res));
+    }
 
     WriteStringToRegistry(hk, L"UninstallString", L"\"" + exeDst + L"\" -u");
     WriteStringToRegistry(hk, L"DisplayName", L"Netbox test task");
     WriteStringToRegistry(hk, L"Publisher", L"Alexey Frolov(alexwin32@mail.ru)");
+    WriteStringToRegistry(hk, L"InstallLocation", InstallPath);
 
     RegCloseKey(hk);
 }
+
 
 }
