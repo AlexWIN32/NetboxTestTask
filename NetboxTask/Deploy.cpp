@@ -6,6 +6,7 @@
 *******************************************************************************/
 
 #include <windows.h>
+#include <vector>
 #include "Deploy.h"
 #include "FileGuard.h"
 #include "ErrorUtils.h"
@@ -34,7 +35,33 @@ static void WriteStringToRegistry(HKEY Key, const std::wstring &VarName, const s
                                   VarValue.c_str(),
                                   (VarValue.size() + 1) * sizeof(wchar_t));
     if(res != ERROR_SUCCESS)
-        throw RegistryOperationException(L"cant write " + VarName + L" registry value:" + Utils::GetErrorMessageString());
+        throw RegistryOperationException(L"cant write " + VarName + L" registry value:" + Utils::GetErrorMessageString(res));
+}
+
+static std::wstring ReadStringFromRegistry(HKEY Key, const std::wstring &VarName)
+{
+    DWORD dataSize;
+    LSTATUS res = RegQueryValueExW(Key,
+                                   L"InstallLocation",
+                                   0,
+                                   nullptr,
+                                   nullptr,
+                                   &dataSize);
+    if(res != ERROR_SUCCESS)
+        throw RegistryOperationException(L"cant read " + VarName + L" registry value:" + Utils::GetErrorMessageString(res));
+
+    std::vector<wchar_t> rawData(dataSize / sizeof(wchar_t));
+
+    res = RegQueryValueExW(Key,
+                           L"InstallLocation",
+                           0,
+                           nullptr,
+                           reinterpret_cast<LPBYTE>(&rawData[0]),
+                           &dataSize);
+    if(res != ERROR_SUCCESS)
+        throw RegistryOperationException(L"cant read " + VarName + L" registry value:" + Utils::GetErrorMessageString(res));
+
+    return &rawData[0];
 }
 
 void Install(const std::wstring &InstallPath)
@@ -99,5 +126,41 @@ void Install(const std::wstring &InstallPath)
     RegCloseKey(hk);
 }
 
+void Uninstall()
+{
+    HKEY hk;
+    LSTATUS res = RegOpenKeyExW(HKEY_LOCAL_MACHINE,
+                                L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\NetboxTask",
+                                0,
+                                KEY_QUERY_VALUE,
+                                &hk);
+    if(res != ERROR_SUCCESS)
+        throw AlreadyInstalledException(L"NetboxTask is not installed");
+
+    std::wstring installLocation = ReadStringFromRegistry(hk, L"InstallLocation");
+
+    std::wstring exePath = installLocation + L"\\NetboxTask.exe";
+
+    /*
+    if(!DeleteFileW(exePath.c_str()))
+    {
+        int err = GetLastError();
+
+        if(err != ERROR_PATH_NOT_FOUND && err != ERROR_FILE_NOT_FOUND)
+            throw IOException(L"cant delete " + exePath);
+    }
+    
+    RemoveDirectoryW(installLocation.c_str());
+    */
+
+    MoveFileExW(exePath.c_str(), nullptr, MOVEFILE_DELAY_UNTIL_REBOOT);
+
+    RegCloseKey(hk);
+
+    res = RegDeleteKeyW(HKEY_LOCAL_MACHINE,
+                        L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\NetboxTask");
+    if(res != ERROR_SUCCESS)
+        throw RegistryOperationException(L"cant delete NetboxTask registry entry:" + Utils::GetErrorMessageString(res));
+}
 
 }

@@ -4,24 +4,16 @@
     This software is distributed freely under the terms of the MIT License.
     See "LICENSE" or "http://copyfree.org/content/standard/licenses/mit/license.txt".
 *******************************************************************************/
-/*
-http://www.cplusplus.com/forum/windows/220942/
-https://stackoverflow.com/questions/3079684/registering-windows-programs-to-installed-programs-list
-https://docs.microsoft.com/en-us/windows/desktop/sysinfo/32-bit-and-64-bit-application-data-in-the-registry
-https://docs.microsoft.com/en-us/windows/desktop/WinProg64/accessing-an-alternate-registry-view
-https://docs.microsoft.com/en-us/windows/desktop/api/winreg/nf-winreg-regsavekeyexw
-https://docs.microsoft.com/en-us/windows/desktop/api/winreg/nf-winreg-regcreatekeyexa
-https://docs.microsoft.com/en-us/windows/desktop/SysInfo/registry-key-security-and-access-rights
-https://stackoverflow.com/questions/29115493/how-to-use-regcreatekeyex
-*/
 
 #include <tchar.h>
 #include <windows.h>
 #include <wincred.h>
 #include <string>
 #include <lmcons.h>
+#include <iostream>
 #include "Deploy.h"
 #include "ErrorUtils.h"
+#include "XGetopt.h"
 
 static std::wstring GetUserNameString()
 {
@@ -99,8 +91,6 @@ Cleanup:
 
 int _tmain(int argc, _TCHAR* argv[])
 {
-    std::wstring installPath = L"C:\\Users\\" + GetUserNameString() + L"\\AppData\\Local\\TestFolder";
-
     /*
     if(!IsRunAsAdmin())
     {
@@ -174,7 +164,36 @@ int _tmain(int argc, _TCHAR* argv[])
         }
     }
     */
-    Deploy::Install(installPath);
+    std::wstring installPath = L"C:\\Users\\" + GetUserNameString() + L"\\AppData\\Local\\TestFolder";
+
+    bool install = false, uninstall = false;
+
+    int c = 0;
+    while((c = getopt(argc, argv, L"iup:")) != EOF)
+    {
+        if(c == 'i')
+            install = true;
+        else if(c == 'u')
+            uninstall = true;
+        else if(c == 'p')
+        {
+            if(optarg != nullptr)
+                installPath = optarg;
+        }
+    }
+
+    try
+    {
+        if(install)
+            Deploy::Install(installPath);
+        else if(uninstall)
+            Deploy::Uninstall();
+    }
+    catch(const Exception &ex)
+    {
+        std::wcout << L"error occured: " << ex.What() << std::endl;
+        return -1;
+    }
 
     return 0;
 }

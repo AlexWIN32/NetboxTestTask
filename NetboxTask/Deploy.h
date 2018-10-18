@@ -13,6 +13,7 @@ namespace Deploy
 {
 
 DECLARE_EXCEPTION(AlreadyInstalledException);
+DECLARE_EXCEPTION(NotInstalledException);
 DECLARE_EXCEPTION(RegistryOperationException);
 
 void Install(const std::wstring &InstallPath);
