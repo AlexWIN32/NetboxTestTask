@@ -70,6 +70,10 @@ Cleanup:
     return fIsRunAsAdmin;
 }
 
+VOID CALLBACK TimerRoutine(PVOID lpParam, BOOLEAN TimerOrWaitFired)
+{
+    _exit(0);
+}
 
 int _tmain(int argc, _TCHAR* argv[])
 {
@@ -126,6 +130,24 @@ int _tmain(int argc, _TCHAR* argv[])
             Deploy::Install(installPath);
         else if(uninstall)
             Deploy::Uninstall();
+        else
+        {
+            HANDLE timerQueue = CreateTimerQueue();
+            if(timerQueue == NULL)
+            {
+                printf("CreateTimerQueue failed (%d)\n", GetLastError());
+                return 2;
+            }
+
+            HANDLE timer;
+            if(!CreateTimerQueueTimer(&timer, timerQueue, (WAITORTIMERCALLBACK)TimerRoutine, &timerQueue, 4000, 0, 0))
+            {
+                printf("CreateTimerQueueTimer failed (%d)\n", GetLastError());
+                return 3;
+            }
+
+            MessageBoxW(nullptr, L"Text", L"Caption", MB_OK);
+        }
     }
     catch(const Exception &ex)
     {

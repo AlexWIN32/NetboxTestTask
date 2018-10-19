@@ -11,21 +11,10 @@
 #include "FileGuard.h"
 #include "RegistryKey.h"
 #include "ErrorUtils.h"
+#include "GetExeFileData.h"
 
 namespace Deploy
 {
-
-static void GetExeFileData(std::wstring &Path, std::wstring &Name)
-{
-    WCHAR path[MAX_PATH + 1] = {};
-
-    GetModuleFileNameW(nullptr, path, MAX_PATH + 1);
-
-    std::wstring pathStr = path;
-
-    Path = pathStr.substr(0, pathStr.find_last_of('\\'));
-    Name = pathStr.substr(pathStr.find_last_of('\\') + 1);
-}
 
 void Install(const std::wstring &InstallPath)
 {
@@ -38,7 +27,7 @@ void Install(const std::wstring &InstallPath)
     std::wstring exePath;
     std::wstring exeName;
 
-    GetExeFileData(exePath, exeName);
+    Utils::GetExeFileData(exePath, exeName);
 
     CreateDirectoryW(InstallPath.c_str(), nullptr);
 
@@ -60,7 +49,7 @@ void Install(const std::wstring &InstallPath)
         to.Write<char>(ptr, readed);
     }
 
-    //make registry entries
+    //make installed app registry entries
     {
         Utils::RegistryKey key = {HKEY_LOCAL_MACHINE, keyName, Utils::RegistryKey::MODE_CREATE};
 
@@ -68,6 +57,12 @@ void Install(const std::wstring &InstallPath)
         key.WriteString(L"DisplayName",     L"Netbox test task");
         key.WriteString(L"Publisher",       L"Alexey Frolov(alexwin32@mail.ru)");
         key.WriteString(L"InstallLocation", InstallPath);
+    }
+
+    //create TestFolder registry entry
+    {
+        Utils::RegistryKey key1 = {HKEY_LOCAL_MACHINE, L"Software\\TestFolder", Utils::RegistryKey::MODE_CREATE};
+        Utils::RegistryKey key2 = {HKEY_LOCAL_MACHINE, L"Software\\TestFolder\\NetboxTestTask", Utils::RegistryKey::MODE_CREATE};
     }
 }
 
@@ -91,6 +86,9 @@ void Uninstall()
     MoveFileExW(exePath.c_str(), nullptr, MOVEFILE_DELAY_UNTIL_REBOOT);
 
     Utils::RegistryKey::Delete(HKEY_LOCAL_MACHINE, keyName);
+    Utils::RegistryKey::Delete(HKEY_LOCAL_MACHINE, L"Software\\TestFolder\\NetboxTestTask");
+    Utils::RegistryKey::Delete(HKEY_LOCAL_MACHINE, L"Software\\TestFolder");
+    
 }
 
 }
