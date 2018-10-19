@@ -87,8 +87,8 @@ int _tmain(int argc, _TCHAR* argv[])
             sei.fMask = SEE_MASK_NOCLOSEPROCESS;
             sei.hInstApp = NULL;
 
-            bool ret = ShellExecuteExW(&sei);
-            if (!ret)
+            BOOL ret = ShellExecuteExW(&sei);
+            if(!ret)
             {
                 DWORD dwError = GetLastError();
                 if (dwError == ERROR_CANCELLED)

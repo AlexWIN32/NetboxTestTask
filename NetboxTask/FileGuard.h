@@ -100,7 +100,6 @@ private:
 public:
     BasicFileGuard(const BasicFileGuard &) = delete;
     BasicFileGuard &operator= (const BasicFileGuard &) = delete;
-
     BasicFileGuard(TDescriptor File, const std::wstring &Path)
         : file(File), path(Path)
     {}

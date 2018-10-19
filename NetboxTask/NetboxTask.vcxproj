@@ -83,6 +83,7 @@
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
       </PrecompiledHeaderFile>
     </ClCompile>
+    <ClCompile Include="RegistryKey.cpp" />
     <ClCompile Include="XGetopt.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -90,6 +91,7 @@
     <ClInclude Include="ErrorUtils.h" />
     <ClInclude Include="Exception.h" />
     <ClInclude Include="FileGuard.h" />
+    <ClInclude Include="RegistryKey.h" />
     <ClInclude Include="XGetopt.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
