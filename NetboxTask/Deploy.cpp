@@ -11,7 +11,7 @@
 #include "FileGuard.h"
 #include "RegistryKey.h"
 #include "ErrorUtils.h"
-#include "GetExeFileData.h"
+#include "Misc.h"
 
 namespace Deploy
 {

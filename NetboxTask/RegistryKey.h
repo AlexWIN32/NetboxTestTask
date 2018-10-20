@@ -29,6 +29,7 @@ public:
     RegistryKey(HKEY Key, const std::wstring &SubKey, Operation Op);
     RegistryKey(const RegistryKey &) = delete;
     ~RegistryKey();
+    HKEY Get() const { return key; }
     RegistryKey &operator= (const RegistryKey &) = delete;
     std::wstring ReadString(const std::wstring &VarName) const;
     void WriteString(const std::wstring &VarName, const std::wstring &VarValue);

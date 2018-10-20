@@ -7,106 +7,67 @@
 
 #include <tchar.h>
 #include <windows.h>
-#include <wincred.h>
 #include <string>
-#include <lmcons.h>
 #include <iostream>
 #include "Deploy.h"
 #include "ErrorUtils.h"
+#include "Misc.h"
+#include "MainProcessing.h"
 #include "XGetopt.h"
 
-static std::wstring GetUserNameString()
+DECLARE_EXCEPTION(ShellExecuteException)
+
+static void RunAsAdmin(int argc, _TCHAR* argv[])
 {
-    WCHAR username[UNLEN + 1] = {};
-    DWORD size = UNLEN + 1;
+    std::wstring paramsStr;
 
-    GetUserNameW(reinterpret_cast<LPWSTR>(&username), &size);
+    for(int p = 1; p < argc; p++)
+        paramsStr += std::wstring(argv[p]) + ((p < argc - 1) ? L" " : L"");
 
-    return username;
+    // Launch itself as administrator.
+    SHELLEXECUTEINFO sei = { sizeof(sei) };
+    sei.lpVerb = L"runas";
+    sei.lpFile = argv[0];
+    sei.lpParameters = paramsStr.c_str();
+    sei.nShow = SW_SHOW;
+    sei.fMask = SEE_MASK_NOCLOSEPROCESS;
+    sei.hInstApp = nullptr;
+
+    BOOL ret = ShellExecuteExW(&sei);
+    if(!ret)
+    {
+        DWORD dwError = GetLastError();
+        if (dwError != ERROR_CANCELLED)
+            throw ShellExecuteException(L"ShellExecute() error:" + Utils::GetErrorMessageString());
+        else
+            exit(0);
+    }
+    else
+        WaitForSingleObject(sei.hProcess, INFINITE);
 }
 
-BOOL IsRunAsAdmin()
+static void PrintUsage(_TCHAR *ProgramName)
 {
-    BOOL fIsRunAsAdmin = FALSE;
-    DWORD dwError = ERROR_SUCCESS;
-    PSID pAdministratorsGroup = NULL;
-
-    // Allocate and initialize a SID of the administrators group.
-    SID_IDENTIFIER_AUTHORITY NtAuthority = SECURITY_NT_AUTHORITY;
-    if (!AllocateAndInitializeSid(
-        &NtAuthority,
-        2,
-        SECURITY_BUILTIN_DOMAIN_RID,
-        DOMAIN_ALIAS_RID_ADMINS,
-        0, 0, 0, 0, 0, 0,
-        &pAdministratorsGroup))
-    {
-        dwError = GetLastError();
-        goto Cleanup;
-    }
-
-    // Determine whether the SID of administrators group is enabled in
-    // the primary access token of the process.
-    if (!CheckTokenMembership(NULL, pAdministratorsGroup, &fIsRunAsAdmin))
-    {
-        dwError = GetLastError();
-        goto Cleanup;
-    }
-
-Cleanup:
-    // Centralized cleanup for all allocated resources.
-    if (pAdministratorsGroup)
-    {
-        FreeSid(pAdministratorsGroup);
-        pAdministratorsGroup = NULL;
-    }
-
-    // Throw the error if something failed in the function.
-    if (ERROR_SUCCESS != dwError)
-    {
-        throw dwError;
-    }
-
-    return fIsRunAsAdmin;
-}
-
-VOID CALLBACK TimerRoutine(PVOID lpParam, BOOLEAN TimerOrWaitFired)
-{
-    _exit(0);
+    std::wcout << "Usage:" << ProgramName << "[-i] [-u] [-p install path]" <<  std::endl
+               << "-i install application" << std::endl
+               << "-u uninstall application" << std::endl
+               << "-p install path " << std::endl;
 }
 
 int _tmain(int argc, _TCHAR* argv[])
 {
-    if(!IsRunAsAdmin())
-    {
-        wchar_t szPath[MAX_PATH];
-        if (GetModuleFileName(NULL, szPath, ARRAYSIZE(szPath)))
+    if(Utils::IsRunAsAdmin() == FALSE)
+        try
         {
-            // Launch itself as administrator.
-            SHELLEXECUTEINFO sei = { sizeof(sei) };
-            sei.lpVerb = L"runas";
-            sei.lpFile = szPath;
-            sei.lpParameters = NULL;
-            sei.nShow = SW_SHOW;
-            sei.fMask = SEE_MASK_NOCLOSEPROCESS;
-            sei.hInstApp = NULL;
-
-            BOOL ret = ShellExecuteExW(&sei);
-            if(!ret)
-            {
-                DWORD dwError = GetLastError();
-                if (dwError == ERROR_CANCELLED)
-                {
-                    // The user refused the elevation.
-                    // Do nothing ...
-                }
-            }
-            else
-                WaitForSingleObject(sei.hProcess,INFINITE);
+            RunAsAdmin(argc, argv);
         }
-    }
+        catch(const Exception &ex)
+        {
+            std::wcout << L"error occured: " << ex.What() << std::endl;
+            return -1;
+        }
 
-    std::wstring installPath = L"C:\\Users\\" + GetUserNameString() + L"\\AppData\\Local\\TestFolder";
+    std::wstring installPath = L"C:\\Users\\" + Utils::GetUserNameString() + L"\\AppData\\Local\\TestFolder";
 
     bool install = false, uninstall = false;
 
@@ -124,6 +85,12 @@ int _tmain(int argc, _TCHAR* argv[])
         }
     }
 
+    if(install && uninstall)
+    {
+        PrintUsage(argv[0]);
+        return 0;
+    }
+
     try
     {
         if(install)
@@ -131,23 +98,7 @@ int _tmain(int argc, _TCHAR* argv[])
         else if(uninstall)
             Deploy::Uninstall();
         else
-        {
-            HANDLE timerQueue = CreateTimerQueue();
-            if(timerQueue == NULL)
-            {
-                printf("CreateTimerQueue failed (%d)\n", GetLastError());
-                return 2;
-            }
-
-            HANDLE timer;
-            if(!CreateTimerQueueTimer(&timer, timerQueue, (WAITORTIMERCALLBACK)TimerRoutine, &timerQueue, 4000, 0, 0))
-            {
-                printf("CreateTimerQueueTimer failed (%d)\n", GetLastError());
-                return 3;
-            }
-
-            MessageBoxW(nullptr, L"Text", L"Caption", MB_OK);
-        }
+            MainProcessing();
     }
     catch(const Exception &ex)
     {

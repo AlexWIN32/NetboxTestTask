@@ -78,6 +78,7 @@
   <ItemGroup>
     <ClCompile Include="Deploy.cpp" />
     <ClCompile Include="ErrorUtils.cpp" />
+    <ClCompile Include="MainProcessing.cpp" />
     <ClCompile Include="NetboxTask.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -91,6 +92,8 @@
     <ClInclude Include="ErrorUtils.h" />
     <ClInclude Include="Exception.h" />
     <ClInclude Include="FileGuard.h" />
+    <ClInclude Include="MainProcessing.h" />
+    <ClInclude Include="Misc.h" />
     <ClInclude Include="RegistryKey.h" />
     <ClInclude Include="XGetopt.h" />
   </ItemGroup>
