@@ -155,7 +155,7 @@
 TCHAR	*optarg;		// global argument pointer
 int		optind = 0; 	// global argv index
 
-int getopt(int argc, TCHAR *argv[], TCHAR *optstring)
+int getopt(int argc, WCHAR *argv[], WCHAR *optstring)
 {
 	static TCHAR *next = NULL;
 	if (optind == 0)

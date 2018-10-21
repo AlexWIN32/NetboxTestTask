@@ -17,7 +17,7 @@
 
 DECLARE_EXCEPTION(ShellExecuteException)
 
-static void RunAsAdmin(int argc, _TCHAR* argv[])
+static void RunAsAdmin(int argc, WCHAR* argv[])
 {
     std::wstring paramsStr;
 
@@ -46,7 +46,7 @@ static void RunAsAdmin(int argc, _TCHAR* argv[])
         WaitForSingleObject(sei.hProcess, INFINITE);
 }
 
-static void PrintUsage(_TCHAR *ProgramName)
+static void PrintUsage(WCHAR *ProgramName)
 {
     std::wcout << "Usage:" << ProgramName << "[-i] [-u] [-p install path]" <<  std::endl
                << "-i install application" << std::endl
@@ -54,7 +54,7 @@ static void PrintUsage(_TCHAR *ProgramName)
                << "-p install path " << std::endl;
 }
 
-int _tmain(int argc, _TCHAR* argv[])
+int _tmain(int argc, WCHAR* argv[])
 {
     if(Utils::IsRunAsAdmin() == FALSE)
         try

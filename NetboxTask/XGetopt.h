@@ -18,8 +18,8 @@
 #include <windows.h>
 
 extern int optind, opterr;
-extern TCHAR *optarg;
+extern WCHAR *optarg;
 
-int getopt(int argc, TCHAR *argv[], TCHAR *optstring);
+int getopt(int argc, WCHAR *argv[], WCHAR *optstring);
 
 #endif //XGETOPT_H

@@ -8,6 +8,8 @@
 #include <windows.h>
 #include "MainProcessing.h"
 #include "ErrorUtils.h"
+#include "RegistryKey.h"
+#include "Misc.h"
 
 static void CALLBACK TimerRoutine(PVOID, BOOLEAN)
 {
@@ -16,6 +18,22 @@ static void CALLBACK TimerRoutine(PVOID, BOOLEAN)
 
 void MainProcessing()
 {
+    std::wstring installLocation;
+
+    {
+        Utils::RegistryKey key = {HKEY_LOCAL_MACHINE,
+                                  L"SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\NetboxTask",
+                                  Utils::RegistryKey::MODE_OPEN};
+
+        installLocation = key.ReadString(L"InstallLocation");
+    }
+
+    std::wstring exePath, exeFile;
+    Utils::GetExeFileData(exePath, exeFile);
+
+    if(exePath != installLocation)
+        throw InvalidExecutionPathException(L"program must be executed exactly from the installed path");
+
     HANDLE timerQueue = CreateTimerQueue();
     if(timerQueue == nullptr)
         throw MainProcessingException(L"cant create timer queue " + Utils::GetErrorMessageString());
@@ -31,5 +49,5 @@ void MainProcessing()
     if(!res)
         throw MainProcessingException(L"cant create timer queue timer" + Utils::GetErrorMessageString());
 
-    MessageBoxW(nullptr, L"Programm wil automatically end in 30 seconds", L"Message", MB_OK);
+    MessageBoxW(nullptr, L"Program will automatically end in 30 seconds", L"Message", MB_OK);
 }

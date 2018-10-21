@@ -9,5 +9,6 @@
 #include "Exception.h"
 
 DECLARE_EXCEPTION(MainProcessingException)
+DECLARE_EXCEPTION(InvalidExecutionPathException)
 
 void MainProcessing();
